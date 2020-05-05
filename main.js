@@ -19,6 +19,7 @@ class AppData {
     this.film = {};
     this.cardCountNum = 0;
     this.cardCountHtml = document.querySelector('.search__count');
+    this.elementCheckedStart = {};
   } 
   // Удалить обьект со страницы
   remove (element) {
@@ -48,15 +49,16 @@ class AppData {
       this.render(this.film, this.createShowFilmBtnTemplate(), `beforeend`);
       this.renderFilms();
       this.menuSortCheck();
-      this.filmEventListeners();
+      this.clickCard();
       this.renderCountSearch();
-      
+      this.filmBtnShow.addEventListener(`click`, this.clickShowBtn.bind(this));
+      this.elementCheckedStart = this.inputCheck(); 
     };
 
-    const errorData = () => {
-      renderCountSearch('Ошибка подключения!');
+    const errorData = (data) => {
+      renderCountSearch(data);
     };
-
+    
     this.postData()
       .then(outputData)
       .catch(errorData);
@@ -103,17 +105,20 @@ class AppData {
     this.filmWrapper = document.querySelector('.film__wrapper');
     this.dataSort.slice(0, this.showingFilmsCount).forEach((dataSort) =>
           this.render(this.filmWrapper, this.createFilmTemplate(dataSort.photo, dataSort.name, dataSort.realName, `beforeend`)));
-    this.eventListeners();
+    this.clickFilter();
   }
   // Боковое меню
   createSearchMenuTemplate (name , el, checked = '') {
+    let n = name[0].toUpperCase() + name.substring(1);
+    let e = el[0].toUpperCase() + el.substring(1);
+    
     return (`
-      <label class="search__label" for="${el = el[0].toUpperCase() + el.substring(1)}">
-        <input class="search__input ${name = name[0].toUpperCase() + name.substring(1)}" 
+      <label class="search__label" for="${e}-${n}">
+        <input class="search__input ${n}" 
           type="radio" 
-          id="${el = el[0].toUpperCase() + el.substring(1)}" name="${name = name[0].toUpperCase() + name.substring(1)}" 
-          value="" ${checked}>
-          ${el = el[0].toUpperCase() + el.substring(1)}
+          id="${e}-${n}" name="${n}" 
+          ${checked}>
+          ${e}
       </label>
     `);
   }
@@ -184,7 +189,7 @@ class AppData {
             this.data = JSON.parse(request.responseText);
             resolve(this.data);
         } else {
-            reject();
+            reject(responseText);
         }
       });
   
@@ -193,28 +198,34 @@ class AppData {
       request.send();
     });
   }
-  // Клик по кнопке рендер на странице
-  eventListeners () {
-    this.filmBtnShow = document.querySelector('.film__btn__show');
-    
+  // Клик фильтрам + рендер на странице
+  clickFilter () {
+    this.filmBtnShow = document.querySelector('.film__btn__show');   
+
     if (this.filmBtnShow === null) {
+      if (this.dataSort.length <= 10) {
+        return;
+      }
+
       this.render(this.film, this.createShowFilmBtnTemplate(), `beforeend`);
       this.filmBtnShow = document.querySelector('.film__btn__show');
-    }
-    
-    
-    this.filmBtnShow.addEventListener(`click`, (e) => {
-      e.preventDefault();
-      const prevFilmsCount = this.showingFilmsCount;
-      this.showingFilmsCount = this.showingFilmsCount + this.SHOWING_FILMS_COUNT_BY_BUTTON;
-
-      this.dataSort.slice(prevFilmsCount, this.showingFilmsCount)
-        .forEach((data) => this.render(this.filmWrapper, this.createFilmTemplate(data.photo, data.name, data.realName, `beforeend`)));
-
-      if (this.showingFilmsCount >= this.dataSort.length) {
+      this.filmBtnShow.addEventListener(`click`, this.clickShowBtn.bind(this));
+    } else if (this.dataSort.length <= 10) {
         this.remove(this.filmBtnShow);
-      }
-    });
+        
+    }
+  }
+
+  clickShowBtn () {
+    const prevFilmsCount = this.showingFilmsCount;
+    this.showingFilmsCount = this.showingFilmsCount + this.SHOWING_FILMS_COUNT_BY_BUTTON;
+
+    this.dataSort.slice(prevFilmsCount, this.showingFilmsCount)
+      .forEach((data) => this.render(this.filmWrapper, this.createFilmTemplate(data.photo, data.name, data.realName, `beforeend`)));
+
+    if (this.showingFilmsCount >= this.dataSort.length) {
+      this.remove(this.filmBtnShow);
+    }
   }
   // Чекнутые инпуты
   inputCheck () {
@@ -222,84 +233,98 @@ class AppData {
       return item.className !== 'search__btn' && item.checked === true;
     });
     let arr = {};
+ 
     input.forEach(el => {
-      arr[el.name] = el.id;
-      
+      let one = el.id.split('-');
+      arr[one[1]] = one[0];
     });
     return arr;
   }
+  
+  flterCardData (elementChecked) {
+
+    let filterGender = [];
+    this.data.forEach(el => {
+      if (el.gender !== undefined) {
+        if (el.gender.toLowerCase() === elementChecked.Gender.toLowerCase()) filterGender.push(el);
+        if (elementChecked.Gender.toLowerCase() === "Allgender".toLowerCase()) filterGender.push(el);
+      } else {
+        filterGender.push(el);
+      }
+    });
+    let filterStatus = [];
+      filterGender.forEach(el => {
+        if (el.status !== undefined) {
+          if (el.status.toLowerCase() === elementChecked.Status.toLowerCase()) filterStatus.push(el);
+          if (elementChecked.Status.toLowerCase() === "Allstatus".toLowerCase()) filterStatus.push(el);
+        } else {
+          filterStatus.push(el);
+        }
+    });
+
+    let filterSpecies = [];
+    filterStatus.forEach(el => {
+      if (el.species !== undefined) {
+        if (el.species.toLowerCase() === elementChecked.Species.toLowerCase()) filterSpecies.push(el);
+        if (elementChecked.Species.toLowerCase() === "Allspecies".toLowerCase()) filterSpecies.push(el);
+      } else {
+        filterSpecies.push(el);
+      }
+    });
+
+    let filterCitizenship = [];
+    filterSpecies.forEach(el => {
+      if (el.citizenship !== undefined) {          
+        if (el.citizenship.toLowerCase() === elementChecked.Citizenship.toLowerCase()) filterCitizenship.push(el);
+        if (elementChecked.Citizenship.toLowerCase() === "Allcitizenship".toLowerCase()) filterCitizenship.push(el);
+      } else {
+        filterCitizenship.push(el);
+      }
+    });
+
+    return filterCitizenship;
+  }
   // форма сортировки
   menuSortCheck () {
-   
     this.form = document.querySelector('form');
     this.form.addEventListener('click', (evt) => {
+
       if (evt.target.classList.contains('search__input')) {     
         this.showingFilmsCount = this.SHOWING_FILMS_COUNT_ON_START;
         this.filmCard = document.querySelectorAll('.film__card');
         this.removeAll(this.filmCard);
-        this.dataSort = {}; 
-
-        let elementChecked = this.inputCheck();        
-        let filterGender = [];
-        this.data.forEach(el => {
-          if (el.gender !== undefined) {
-            if (el.gender.toLowerCase() === elementChecked.Gender.toLowerCase()) filterGender.push(el);
-            if (elementChecked.Gender.toLowerCase() === "Allgender".toLowerCase()) filterGender.push(el);
-          } else {
-            filterGender.push(el);
-          }
-        });
-        let filterStatus = [];
-          filterGender.forEach(el => {
-            if (el.status !== undefined) {
-              if (el.status.toLowerCase() === elementChecked.Status.toLowerCase()) filterStatus.push(el);
-              if (elementChecked.Status.toLowerCase() === "Allstatus".toLowerCase()) filterStatus.push(el);
-            } else {
-              filterStatus.push(el);
-            }
-        });
-
-        let filterSpecies = [];
-        filterStatus.forEach(el => {
-          if (el.species !== undefined) {
-            if (el.species.toLowerCase() === elementChecked.Species.toLowerCase()) filterSpecies.push(el);
-            if (elementChecked.Species.toLowerCase() === "Allspecies".toLowerCase()) filterSpecies.push(el);
-          } else {
-            filterSpecies.push(el);
-          }
-        });
-
-        let filterCitizenship = [];
-        filterSpecies.forEach(el => {
-          if (el.citizenship !== undefined) {          
-            if (el.citizenship.toLowerCase() === elementChecked.Citizenship.toLowerCase()) filterCitizenship.push(el);
-            if (elementChecked.Citizenship.toLowerCase() === "Allcitizenship".toLowerCase()) filterCitizenship.push(el);
-          } else {
-            filterCitizenship.push(el);
-          }
-        });
-
-        this.dataSort = filterCitizenship;
-        
-        this.renderCountSearch(filterCitizenship.length);
+        let elementChecked = this.inputCheck(); 
+        this.dataSort = this.flterCardData(elementChecked);
+        this.renderCountSearch(this.dataSort.length);
         if (this.dataSort.length === 0) this.dataSort = this.data;
         this.renderFilms();
         
       }
       if (evt.target.classList.contains('search__btn')) {
-        // this.menuSortCheck();
-        
+
+        this.showingFilmsCount = this.SHOWING_FILMS_COUNT_ON_START;
+        this.filmCard = document.querySelectorAll('.film__card');
+        this.removeAll(this.filmCard);
+        this.dataSort = this.flterCardData(this.elementCheckedStart);
+        this.renderCountSearch(this.dataSort.length);
+        this.renderFilms();
       }
     });
   }
   // рендер кол-во найденых эл
-  renderCountSearch(number = this.dataSort.length) {
-    if (number === 0) number = "Ничего не найдено. Показаны все.";
+  renderCountSearch(number = this.dataSort.length, color = 'green') {
+    if (number === 0) {
+      number = "Ничего не найдено. Показаны все.";
+      color = 'red';
+    }
     this.cardCountHtml.textContent = number;
+    this.cardCountHtml.style.color = color;
+
   }
   // Клик по карточке / рендер попапа
-  filmEventListeners () {
+  clickCard () {
     this.filmWrapper.addEventListener('click', (evt) => {
+     
       evt.preventDefault();
       if (evt.target.matches('.film__link')) {
         let card = evt.target.parentNode;
@@ -330,6 +355,7 @@ class AppData {
     });
 
   }
+
 
 }
 
