@@ -56,7 +56,7 @@ class AppData {
     };
 
     const errorData = (data) => {
-      renderCountSearch(data);
+      this.renderCountSearch('Ошибка: '+data, 'tomato');
     };
     
     this.postData()
@@ -189,7 +189,7 @@ class AppData {
             this.data = JSON.parse(request.responseText);
             resolve(this.data);
         } else {
-            reject(responseText);
+            reject(request.status);
         }
       });
   
